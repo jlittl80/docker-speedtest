@@ -1,4 +1,3 @@
-#FROM hypriot/rpi-node:slim
 FROM node:latest
 
 RUN mkdir /app
