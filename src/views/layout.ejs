@@ -1,18 +1,51 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>Speed Tester</title>
+  <head>
+    <title>Speed Tester</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Load Bootstrap and Chart.js -->
     <script src="/js/Chart.min.js"></script>
-		<!-- Latest compiled and minified CSS -->
-		<link rel="stylesheet" href="/css/bootstrap.min.css" type="text/css">
-		<!-- Latest compiled and minified JavaScript -->
-		<script src="/js/bootstrap.min.js"></script>
-		<script src="/js/jquery-1.12.1.min.js"></script>
-	</head>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/css/nouislider.min.css" type="text/css">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="/js/jquery-1.12.1.min.js"></script>
+    <script src="/js/math.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/nouislider.min.js"></script>
+    <style>
+      /*Removes useless margins when viewing on mobile*/
+      @media only screen and (max-width: 991px) {
+        .container {
+          padding: 0 50px;
+          width: 100%;
+        }
+      }
+      /*Makes the dates above the slider sit inline with eachother*/
+      .dates * {
+        display: inline-block;
+      }
+      /*Makes the last date sit to the right on the same line*/
+      #last-date {
+        float: right;
+      }
+      /*Add some space around the canvas*/
+      .canvas-container {
+          padding: 30px 0;
+      }
+      /*Helps break up the stats*/
+      .stats .stat-row {
+        padding-bottom: 10px;
+      }
+    </style>
+  </head>
 	<body>
-		<div class="container">
-			<%- body %>
+		<div class="container-xl">
+      <% if (msg) { %>
+        <%- include('error') %>
+      <% } else { %>
+        <%- include('index') %>
+      <% } %>
 		</div>
 	</body>
 </html>

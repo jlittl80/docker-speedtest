@@ -1,96 +1,202 @@
-<div class="jumbotron">
-  <h1>Local Internet Speeds</h1>
-  <p>Checks are performed every 30 minutes</p>
-  <a href="/speeds.csv">Download file</a>
-</div>
-<div class="starter-template">
-  <div>
-    <span id="button-list"></span>
+<div class="row">
+  <div class="col-12">
+    <div class="jumbotron">
+      <h1>Local Internet Speeds</h1>
+      <p>Checks are performed every 30 minutes</p>
+      <a href="/speeds.csv">Download file</a>
+    </div>
   </div>
-  <canvas id="myChart" width="1100" height="400"></canvas>
-  <script>
-    // the data
-    var d_labels = <%- JSON.stringify(data[0]) %>;
-    var d_pings = [<%= data[1] %>];
-    var d_downs = [<%= data[2] %>];
-    var d_ups = [<%= data[3] %>];
+</div>
+<div class="row">
+  <div class="col-12">
+    <div class="dates">
+      <div id="first-date"></div>
+      <div id="last-date"></div>
+    </div>
+    <div id="slider"></div>
+    <div class="canvas-container">
+      <canvas id="myChart" width="1100" height="400"></canvas>
+    </div>
+    <div class="stats row">
+      <div class="col-6">
+        <h4>All time stats</h4>
+        <div class="stat-row">
+          <h6>Mean</h6>
+          <div>Download: <span id="all-mean-dl"></span></div>
+          <div>Upload: <span id="all-mean-up"></span></div>
+          <div>Ping: <span id="all-mean-pg"></span></div>
+        </div>
+        <div class="stat-row">
+          <h6>Range</h6>
+          <div>Download: <span id="all-rang-dl"></span></div>
+          <div>Upload: <span id="all-rang-up"></span></div>
+          <div>Ping: <span id="all-rang-pg"></span></div>
+        </div>
+      </div>
+      <div class="col-6">
+        <h4>Selection stats</h4>
+        <div class="stat-row">
+          <h6>Mean</h6>
+          <div>Download: <span id="sel-mean-dl"></span></div>
+          <div>Upload: <span id="sel-mean-up"></span></div>
+          <div>Ping: <span id="sel-mean-pg"></span></div>
+        </div>
+        <div class="stat-row">
+          <h6>Range</h6>
+          <div>Download: <span id="sel-rang-dl"></span></div>
+          <div>Upload: <span id="sel-rang-up"></span></div>
+          <div>Ping: <span id="sel-rang-pg"></span></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      //The data
+      var d_labels = <%- JSON.stringify(data[0]) %>,
+          d_pings = [<%= data[1] %>],
+          d_downs = [<%= data[2] %>],
+          d_ups = [<%= data[3] %>];
 
-    // setting
-    var split = 24;
+      //Default Settings
+      var sliderDefaultRange = 48,
+          sliderMin = 0,
+          sliderMax = ((d_labels.length > 0) ? d_labels.length - 1 : 0),
+          sliderDefaultValLower = ((sliderMax > sliderDefaultRange) ? sliderMax - sliderDefaultRange : 0),
+          sliderDefaultValUpper = sliderMax,
+          canvas = document.getElementById("myChart"),
+          ctx = canvas.getContext("2d"),
+          myLineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              datasets: [
+                {
+                  label: "Download (MBit/s)",
+                  backgroundColor: "rgba(99, 232, 17, 0.63)",
+                  borderColor: "rgba(110, 180, 82, 1)",
+                  pointBackgroundColor: "rgba(110, 201, 60, 1)",
+                  pointBorderColor: "#fff",
+                  pointHoverBackgroundColor: "#fff",
+                  pointHoverBorderColor: "rgba(137, 244, 116, 1)",
+                },
+                {
+                  label: "Ping (ms)",
+                  backgroundColor: "rgba(222, 150, 150, 0.5)",
+                  borderColor: "rgba(238, 143, 143, 1)",
+                  pointBackgroundColor: "rgba(195, 59, 59, 1)",
+                  pointBorderColor: "#fff",
+                  pointHoverBackgroundColor: "#fff",
+                  pointHoverBorderColor: "rgba(170, 46, 46, 1)",
+                },
+                {
+                  label: "Upload (MBit/s)",
+                  backgroundColor: "rgba(24, 154, 219, 0.60)",
+                  borderColor: "rgba(86, 159, 205, 1)",
+                  pointBackgroundColor: "rgba(65, 120, 215, 1)",
+                  pointBorderColor: "#fff",
+                  pointHoverBackgroundColor: "#fff",
+                  pointHoverBorderColor: "rgba(140, 217, 255, 1)",
+                }
+              ]
+            },
+            options: {
+              maintainAspectRatio: false,
+              scales: {
+                yAxes: [{
+                  ticks: {
+                    beginAtZero: false
+                  }
+                }]
+              }
+            }
+          });
 
-    // select the button list
-    var btns = document.getElementById("button-list");
-    for(i=0; i<d_labels.length; i=i+split) {
-      var btn = document.createElement('button');
-      btn.setAttribute("type", "button");
-      var last = d_labels[d_labels.length - 1];
-      var first = i;
-      if(d_labels.length > i + split) {
-        last = d_labels[i+split];
+      //Setup DOM Elements
+      var slider = document.getElementById('slider');
+      document.getElementById('first-date').innerHTML = d_labels[sliderMin].substring(0, d_labels[sliderMin].indexOf('['));
+      document.getElementById('last-date').innerHTML = d_labels[sliderMax].substring(0, d_labels[sliderMax].indexOf('['));
+      noUiSlider.create(slider, {
+        start: [sliderDefaultValLower, sliderDefaultValUpper],
+        connect: true,
+        step: 1,
+        range: {
+          'min': sliderMin,
+          'max': sliderMax
+        }
+      });
+
+      //Listen to Slider
+      slider.noUiSlider.on('set', function() {
+        sliderDefaultValLower = parseInt(slider.noUiSlider.get()[0]);
+        sliderDefaultValUpper = parseInt(slider.noUiSlider.get()[1]);
+        updateChart(sliderDefaultValLower, sliderDefaultValUpper);
+        updateStats(sliderDefaultValLower, sliderDefaultValUpper);
+      });
+
+      //Create the Graph
+      updateChart(sliderDefaultValLower, sliderDefaultValUpper);
+
+      //
+      updateStats(sliderDefaultValLower, sliderDefaultValUpper);
+
+      //How we create and update the Chart
+      function updateChart(startId, endId) {
+        //We find how many items are in the Chart by counting the labels
+        //In theory, there should be an equal amount of labels and data
+        //in the datasets
+        var itemLen = myLineChart.data.labels.length,
+            updateSize = endId - startId;
+
+        //Remove everything
+        for (var i = 0; i < itemLen; i++) {
+          myLineChart.data.labels.pop();
+          myLineChart.data.datasets[0].data.pop();
+          myLineChart.data.datasets[1].data.pop();
+          myLineChart.data.datasets[2].data.pop();
+        }
+
+        //Add new data
+        for (var j = 0; j <= updateSize; j++) {
+          myLineChart.data.labels.push(d_labels[startId + j]);
+          myLineChart.data.datasets[0].data[j] = d_downs[startId + j];
+          myLineChart.data.datasets[1].data[j] = d_pings[startId + j];
+          myLineChart.data.datasets[2].data[j] = d_ups[startId + j];
+        }
+
+        //We hide points on the graph either if the screen is too narrow, or
+        //if there are too many data points
+        myLineChart.options.elements.point.radius = ((window.innerWidth < 991 || (updateSize * 15) > window.innerWidth) ? 0 : 3);
+        //We also modify the labels for mobile
+        myLineChart.options.scales.xAxes[0].display = ((window.innerWidth < 768) ? false : true);
+        //Aaaaand update the chart
+        myLineChart.update();
       }
-      else {
-        first = d_labels.length - split;
-        if (first < 0) first = 0;
-      }
-      btn.innerHTML = d_labels[first] + " <=> " + last;
-      btn.setAttribute("class", "btn btn-default");
-      btn.setAttribute("onclick", "drawGraph(" + first.toString() + ", " + (i + split).toString() + ");");
-      btns.appendChild(btn);
-    }
 
-    // create the graph
-    var s = d_labels.length - split;
-    if (s < 0) s=0;
-    var e = d_labels.length;
-    var graphdata = {
-      labels: d_labels.slice(s, e),
-      datasets: [
-          {
-              label: "Ping (ms)",
-              fillColor: "rgba(222, 150, 150, 0.5)",
-              strokeColor: "rgba(238, 143, 143, 1)",
-              pointColor: "rgba(195, 59, 59, 1)",
-              pointStrokeColor: "#fff",
-              pointHighlightFill: "#fff",
-              pointHighlightStroke: "rgba(170, 46, 46, 1)",
-              data: d_pings.slice(s, e)
-          },
-          {
-              label: "Download (MBit/s)",
-              fillColor: "rgba(99, 232, 17, 0.63)",
-              strokeColor: "rgba(110, 180, 82, 1)",
-              pointColor: "rgba(110, 201, 60, 1)",
-              pointStrokeColor: "#fff",
-              pointHighlightFill: "#fff",
-              pointHighlightStroke: "rgba(137, 244, 116, 1)",
-              data: d_downs.slice(s, e)
-          },
-          {
-              label: "Upload (MBit/s)",
-              fillColor: "rgba(24, 154, 219, 0.60)",
-              strokeColor: "rgba(86, 159, 205, 1)",
-              pointColor: "rgba(65, 120, 215, 1)",
-              pointStrokeColor: "#fff",
-              pointHighlightFill: "#fff",
-              pointHighlightStroke: "rgba(140, 217, 255, 1)",
-              data: d_ups.slice(s, e)
-          }
-      ]
-    };
-    var ctx = document.getElementById("myChart").getContext("2d");
-    var myLineChart = new Chart(ctx).Line(graphdata, {animationSteps: 15});
+      function updateStats(startId, endId) {
+        //Because of the war Array.slice(i, j) works, it will return the array
+        //elements between i and j BUT includes i BUT not j
+        //Since in our use case we want that last array item we add a 1 here
+        //instead of every line l8r
+        endId = endId + 1;
 
-    // update the graph
-    function drawGraph(start, end) {
-      var i = start;
-      var id = 0;
-      var draw = function(){
-        myLineChart.addData([d_pings[i], d_downs[i], d_ups[i]], d_labels[i]);
-        myLineChart.removeData();
-        i++;
-        if(i>=end || i >= d_labels.length) clearInterval(id);
+        //Reload stats
+        //We dont need to reload the All time stats, but this is the easiest way
+        //to do it
+        document.getElementById('all-mean-dl').innerHTML = math.mean(d_downs).toFixed(2);
+        document.getElementById('all-mean-up').innerHTML = math.mean(d_ups).toFixed(2);
+        document.getElementById('all-mean-pg').innerHTML = math.mean(d_pings).toFixed(2);
+
+        document.getElementById('all-rang-dl').innerHTML = math.min(d_downs) + ' - ' + math.max(d_downs);
+        document.getElementById('all-rang-up').innerHTML = math.min(d_ups) + ' - ' + math.max(d_ups);
+        document.getElementById('all-rang-pg').innerHTML = math.min(d_pings) + ' - ' + math.max(d_pings);
+
+        //We do however need to reload the Selection stats
+        document.getElementById('sel-mean-dl').innerHTML = math.mean(d_downs.slice(startId, endId)).toFixed(2);
+        document.getElementById('sel-mean-up').innerHTML = math.mean(d_ups.slice(startId, endId)).toFixed(2);
+        document.getElementById('sel-mean-pg').innerHTML = math.mean(d_pings.slice(startId, endId)).toFixed(2);
+
+        document.getElementById('sel-rang-dl').innerHTML = math.min(d_downs.slice(startId, endId)) + ' - ' + math.max(d_downs.slice(startId, endId));
+        document.getElementById('sel-rang-up').innerHTML = math.min(d_ups.slice(startId, endId)) + ' - ' + math.max(d_ups.slice(startId, endId));
+        document.getElementById('sel-rang-pg').innerHTML = math.min(d_pings.slice(startId, endId)) + ' - ' + math.max(d_pings.slice(startId, endId));
       }
-      id = setInterval(draw, 150);
-    };
-  </script>
+    </script>
+  </div>
 </div>
